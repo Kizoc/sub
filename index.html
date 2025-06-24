@@ -2,208 +2,169 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>订阅工具 · 无敌大帅比制作</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>订阅链接解析器</title>
   <style>
     body {
       font-family: "Segoe UI", Roboto, sans-serif;
-      margin: 20px;
-      background: #f0f2f5;
-      color: #333;
+      background: linear-gradient(to right, #e3f2fd, #fce4ec);
+      margin: 0;
+      padding: 40px 20px;
     }
-    h1 {
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    h2 {
       text-align: center;
-      margin-bottom: 15px;
+      color: #1976d2;
     }
-    #theme-picker {
-      display: flex;
-      justify-content: center;
-      margin-bottom: 15px;
-    }
-    .theme-btn {
-      width: 30px;
-      height: 30px;
-      border-radius: 50%;
-      border: 2px solid transparent;
-      cursor: pointer;
-      margin: 0 5px;
-      transition: border-color 0.3s;
-    }
-    .theme-btn.selected {
-      border-color: #000;
-    }
-    #in, #out, #token {
+    textarea, pre, input {
       width: 100%;
-      padding: 10px;
-      margin-bottom: 12px;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 15px;
       border: 1px solid #ccc;
-      border-radius: 6px;
-      font-family: monospace;
-      font-size: 14px;
       box-sizing: border-box;
     }
-    #token {
-      font-family: inherit;
-      font-size: 14px;
+    textarea {
+      height: 80px;
+      resize: none;
+      margin-bottom: 15px;
+    }
+    pre {
+      background: #f6f8fa;
+      max-height: 400px;
+      overflow: auto;
+      white-space: pre-wrap;
     }
     button {
-      width: 100%;
-      padding: 12px;
-      font-size: 16px;
-      background: #1976d2;
+      background-color: #1976d2;
       color: white;
       border: none;
+      padding: 12px 20px;
+      font-size: 16px;
       border-radius: 6px;
       cursor: pointer;
       transition: background 0.3s;
+      display: block;
+      margin: 10px auto;
     }
     button:hover {
-      background: #1565c0;
+      background-color: #1565c0;
     }
     .footer {
-      margin-top: 25px;
+      margin-top: 20px;
       text-align: center;
       font-size: 13px;
       color: #888;
     }
-    #status {
-      margin-top: 10px;
-      font-size: 14px;
-      color: #444;
-      min-height: 22px;
-      text-align: center;
-      user-select: none;
-    }
   </style>
 </head>
 <body>
-  <h1>🌐 订阅工具 · 无敌大帅比制作</h1>
-
-  <div id="theme-picker"></div>
-
-  <textarea id="in" rows="6" placeholder="粘贴你的节点列表(vmess://、trojan://等)"></textarea>
-  <textarea id="out" rows="4" placeholder="Base64 结果" readonly></textarea>
-
-  <input type="text" id="token" placeholder="请输入你的 GitHub Token" autocomplete="off" />
-
-  <button id="encodeBtn">导出订阅(Base64)</button>
-  <button id="uploadBtn" style="margin-top:10px;">上传到 GitHub my-sub.txt</button>
-
-  <div id="status"></div>
-
-  <div class="footer">无敌大帅比制作 © 2025</div>
+  <div class="container">
+    <h2>🌐 订阅链接解析工具（自动处理）</h2>
+    <input id="subUrl" placeholder="请输入你的订阅链接..." />
+    <button onclick="fetchAndProcess()">解析订阅并筛选节点</button>
+    <h3>📦 节点结果：</h3>
+    <pre id="result">等待中...</pre>
+    <button onclick="exportBase64()">导出订阅(Base64)</button>
+    <input id="githubToken" placeholder="请输入你的 GitHub Token" />
+    <button onclick="uploadToGitHub()">上传到 GitHub my-sub.txt</button>
+    <div class="footer">由 无敌大帅比 制作 · 可直接本地保存使用</div>
+  </div>
 
   <script>
-    const themes = {
-      "默认": "#e3f2fd",
-      "暗黑": "#333",
-      "草绿": "#a8e6cf",
-      "霓虹": "#6a00f4",
-      "复古": "#f4ecd8"
-    };
-    const picker = document.getElementById("theme-picker");
-    const body = document.body;
+    const defaultKeywords = [
+      "认准", "全网", "客服", "美女", "mao", "网址", "网站", "最新",
+      "订阅", "续费", "com", "迷路", "官网", "6", "7", "8", "流量", "过期",
+      "落地", "回国", "本站", "用户", "若", "邮箱", "剩余", "顶级", "机场",
+      "到期", "猫", "赔钱", "夏日", "summer"
+    ];
 
-    // 生成主题按钮
-    Object.entries(themes).forEach(([name, color], idx) => {
-      const btn = document.createElement("button");
-      btn.title = name;
-      btn.className = "theme-btn";
-      btn.style.background = color;
-      if (idx === 0) btn.classList.add("selected");
-      btn.onclick = () => {
-        body.style.background = color;
-        document.querySelectorAll(".theme-btn").forEach(b => b.classList.remove("selected"));
-        btn.classList.add("selected");
-      };
-      picker.appendChild(btn);
-    });
+    async function fetchAndProcess() {
+      const url = document.getElementById('subUrl').value.trim();
+      const resultEl = document.getElementById('result');
+      resultEl.textContent = '正在获取并解析订阅内容...';
 
-    const inputArea = document.getElementById("in");
-    const outputArea = document.getElementById("out");
-    const tokenInput = document.getElementById("token");
-    const statusDiv = document.getElementById("status");
-    const encodeBtn = document.getElementById("encodeBtn");
-    const uploadBtn = document.getElementById("uploadBtn");
-
-    function filterNodes(text) {
-      return text
-        .split("\n")
-        .map(line => line.trim())
-        .filter(line => line && !line.startsWith("hy2://"));
-    }
-
-    encodeBtn.onclick = () => {
-      const lines = filterNodes(inputArea.value);
-      if (lines.length === 0) {
-        statusDiv.textContent = "⚠️ 没有有效节点";
-        outputArea.value = "";
+      if (!url.startsWith('http')) {
+        resultEl.textContent = '❌ 请输入合法的订阅链接';
         return;
       }
-      const b64 = btoa(lines.join("\n"));
-      outputArea.value = b64;
-      statusDiv.textContent = "✅ Base64 编码成功，可以上传了";
-    };
-
-    uploadBtn.onclick = async () => {
-      const token = tokenInput.value.trim();
-      if (!token) {
-        statusDiv.textContent = "❌ 请先输入你的 GitHub Token";
-        return;
-      }
-      if (!outputArea.value) {
-        statusDiv.textContent = "❌ 请先点击【导出订阅(Base64)】生成内容";
-        return;
-      }
-
-      statusDiv.textContent = "⏳ 上传中，请稍候...";
 
       try {
-        // 获取最新的 my-sub.txt 文件 SHA（为更新做准备）
-        const repoOwner = "kizoc"; // 你的 GitHub 用户名
-        const repoName = "sub";    // 仓库名
-        const path = "my-sub.txt";
+        const res = await fetch(url);
+        const base64text = await res.text();
+        const decoded = atob(base64text);
+        const lines = decoded
+          .split('\n')
+          .map(line => line.trim())
+          .filter(line => {
+            if (!line || line.startsWith('hy2://')) return false;
+            return defaultKeywords.some(keyword => decodeURIComponent(line).includes(keyword));
+          });
 
-        // 先获取文件信息，拿 SHA
-        let sha = null;
-        const getRes = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${path}`, {
-          headers: { Authorization: "token " + token }
+        resultEl.textContent = lines.length
+          ? lines.join('\n')
+          : '⚠️ 没有符合关键词的节点，或全部为 hy2 协议';
+      } catch (err) {
+        resultEl.textContent = '❌ 解析失败：' + err.message;
+      }
+    }
+
+    function exportBase64() {
+      const raw = document.getElementById('result').textContent.trim();
+      if (!raw) return alert("没有可导出的内容");
+      const encoded = btoa(raw);
+      navigator.clipboard.writeText(encoded).then(() => {
+        alert("✅ Base64 编码内容已复制");
+      });
+    }
+
+    async function uploadToGitHub() {
+      const token = document.getElementById('githubToken').value.trim();
+      const content = btoa(document.getElementById('result').textContent);
+      const username = "kizoc";
+      const repo = "sub";
+      const path = "my-sub.txt";
+
+      const url = `https://api.github.com/repos/${username}/${repo}/contents/${path}`;
+
+      try {
+        const getRes = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` }
         });
-        if (getRes.status === 200) {
-          const json = await getRes.json();
-          sha = json.sha;
-        } else if (getRes.status === 404) {
-          // 文件不存在，创建新文件，sha 为空即可
-          sha = null;
-        } else {
-          throw new Error(`获取文件信息失败，状态码 ${getRes.status}`);
-        }
+        const getJson = await getRes.json();
+        const sha = getJson.sha || "";
 
-        // 上传（更新）文件内容
-        const putRes = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${path}`, {
+        const res = await fetch(url, {
           method: "PUT",
           headers: {
-            "Content-Type": "application/json",
-            Authorization: "token " + token
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            message: "网页工具自动更新订阅内容",
-            content: btoa(outputArea.value), // 这里要双重编码，所以用 outputArea.value 而不是 lines.join('\n')
-            sha: sha,
-            branch: "main"
+            message: "update my-sub.txt",
+            content: content,
+            sha: sha
           })
         });
 
-        if (putRes.status === 201 || putRes.status === 200) {
-          statusDiv.textContent = "🎉 上传成功，订阅链接已更新！";
+        if (res.ok) {
+          alert("✅ 上传成功！");
         } else {
-          const errJson = await putRes.json();
-          throw new Error(errJson.message || "上传失败");
+          const err = await res.json();
+          alert("❌ 上传失败：" + (err.message || "未知错误"));
         }
       } catch (e) {
-        statusDiv.textContent = "❌ 上传失败：" + e.message;
+        alert("❌ 请求失败：" + e.message);
       }
-    };
+    }
   </script>
 </body>
 </html>
+
