@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>订阅工具 · 无敌大帅比制作</title>
+  <style>
+    body{font-family:Segoe UI,Roboto,sans-serif;margin:0;padding:20px;background:#f0f2f5;}
+    .footer{margin-top:20px;text-align:center;color:#888;font-size:14px;}
+    .theme-btn{width:30px;height:30px;border-radius:50%;border:2px solid transparent;cursor:pointer;margin:5px;}
+    .theme-btn.selected{border-color:#000;}
+    #theme-picker{display:flex;flex-wrap:wrap;margin-bottom:15px;}
+    #in, #out {width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:6px;font-size:14px;font-family:monospace;}
+    button {padding:8px 16px;font-size:15px;border:none;border-radius:6px;cursor:pointer;background:#1976d2;color:#fff;}
+    button:hover{background:#1565c0;}
+  </style>
+</head>
+<body>
+  <h1>🌐 订阅工具 · 无敌大帅比制作</h1>
+
+  <div id="theme-picker"></div>
+
+  <textarea id="in" rows="6" placeholder="粘贴节点列表(vmss://...)"></textarea>
+  <button onclick="encode()">导出订阅(Base64)</button>
+  <textarea id="out" rows="4" placeholder="Base64结果"></textarea>
+
+  <div class="footer">无敌大帅比制作 © 2025</div>
+
+  <script>
+    const themes = {
+      "默认":"#e3f2fd", "暗黑":"#333", "草绿":"#a8e6cf", "霓虹":"#6a00f4", "复古":"#f4ecd8"
+    };
+    const picker = document.getElementById('theme-picker'), root = document.documentElement;
+    Object.entries(themes).forEach(([name, c]) => {
+      const b=document.createElement('button');
+      b.title=name; b.className='theme-btn';
+      b.style.background=c;
+      b.onclick=()=>{ setTheme(c); document.querySelectorAll('.theme-btn').forEach(x=>x.classList.remove('selected')); b.classList.add('selected'); }
+      if(name==="默认") b.classList.add('selected');
+      picker.appendChild(b);
+    });
+    function setTheme(c){ document.body.style.background=c; }
+    function encode(){
+      const lines=outFilter(document.getElementById('in').value);
+      const res=btoa(lines.join('\n'));
+      document.getElementById('out').value=res;
+    }
+    function outFilter(text){
+      return text.split('\n').map(l=>l.trim()).filter(l=>l && !l.startsWith('hy2://'));
+    }
+    // 项目 Page 下加载 index 时自动提示 Base64 下载
+  </script>
+</body>
+</html>
