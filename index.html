@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>订阅转换工具（分步操作版）</title>
+  <title>订阅转换工具（分步操作，完善上传）</title>
   <style>
     body {
       font-family: "Segoe UI", Roboto, sans-serif;
@@ -73,7 +73,7 @@
 </head>
 <body>
   <div class="container">
-    <h2>🌐 订阅转换工具（分步操作）</h2>
+    <h2>🌐 订阅转换工具（分步操作，完善上传）</h2>
 
     <label for="subUrl">步骤 1：输入订阅链接（自动 Base64 解码）</label>
     <input id="subUrl" placeholder="例如：https://xxx.com/sub.txt" />
@@ -179,6 +179,11 @@
         const getRes = await fetch(url, {
           headers: { Authorization: `Bearer ${token}` }
         });
+        if (!getRes.ok) {
+          const errorInfo = await getRes.json();
+          alert("❌ 获取文件信息失败：" + (errorInfo.message || getRes.status));
+          return;
+        }
         const getJson = await getRes.json();
         const sha = getJson.sha || "";
 
