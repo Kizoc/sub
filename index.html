@@ -2,8 +2,8 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>订阅链接解析器</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>订阅转换工具（分步操作版）</title>
   <style>
     body {
       font-family: "Segoe UI", Roboto, sans-serif;
@@ -12,7 +12,7 @@
       padding: 40px 20px;
     }
     .container {
-      max-width: 700px;
+      max-width: 720px;
       margin: auto;
       background: #fff;
       padding: 30px;
@@ -23,24 +23,25 @@
       text-align: center;
       color: #1976d2;
     }
-    textarea, pre, input {
+    input, textarea, pre {
       width: 100%;
       border-radius: 8px;
       padding: 12px;
       font-size: 15px;
       border: 1px solid #ccc;
       box-sizing: border-box;
+      margin-bottom: 15px;
     }
     textarea {
       height: 80px;
       resize: none;
-      margin-bottom: 15px;
     }
     pre {
       background: #f6f8fa;
       max-height: 400px;
       overflow: auto;
       white-space: pre-wrap;
+      margin-bottom: 20px;
     }
     button {
       background-color: #1976d2;
@@ -57,6 +58,11 @@
     button:hover {
       background-color: #1565c0;
     }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 6px;
+    }
     .footer {
       margin-top: 20px;
       text-align: center;
@@ -67,74 +73,103 @@
 </head>
 <body>
   <div class="container">
-    <h2>🌐 订阅链接解析工具（自动处理）</h2>
-    <input id="subUrl" placeholder="请输入你的订阅链接..." />
-    <button onclick="fetchAndProcess()">解析订阅并筛选节点</button>
-    <h3>📦 节点结果：</h3>
-    <pre id="result">等待中...</pre>
-    <button onclick="exportBase64()">导出订阅(Base64)</button>
-    <input id="githubToken" placeholder="请输入你的 GitHub Token" />
-    <button onclick="uploadToGitHub()">上传到 GitHub my-sub.txt</button>
-    <div class="footer">由 无敌大帅比 制作 · 可直接本地保存使用</div>
+    <h2>🌐 订阅转换工具（分步操作）</h2>
+
+    <label for="subUrl">步骤 1：输入订阅链接（自动 Base64 解码）</label>
+    <input id="subUrl" placeholder="例如：https://xxx.com/sub.txt" />
+    <button onclick="step1_decode()">解析并解码订阅</button>
+    <pre id="decodedResult">解码结果会显示在这里...</pre>
+
+    <label for="keywordInput">步骤 2：输入关键词（用 | 分隔，自动排除 hy2 协议）</label>
+    <input id="keywordInput" placeholder="例如：机场|美女|官网|订阅" value="认准|全网|客服|美女|mao|网址|网站|最新|订阅|续费|com|迷路|官网|6|7|8|流量|过期|落地|回国|本站|用户|若|邮箱|剩余|顶级|机场|到期|猫|赔钱|夏日|summer" />
+    <button onclick="step2_filter()">筛选节点</button>
+    <pre id="filteredResult">筛选结果会显示在这里...</pre>
+
+    <button onclick="step3_encode()">步骤 3：Base64 再次加密筛选结果</button>
+    <pre id="encodedResult">加密结果会显示在这里...</pre>
+
+    <label for="githubToken">步骤 4：输入 GitHub Token 并上传</label>
+    <input id="githubToken" placeholder="GitHub Token" />
+    <button onclick="step4_upload()">上传到 GitHub my-sub.txt</button>
+
+    <div class="footer">由 无敌大帅比 制作 · 保持 UI 不变，操作清晰</div>
   </div>
 
   <script>
-    const defaultKeywords = [
-      "认准", "全网", "客服", "美女", "mao", "网址", "网站", "最新",
-      "订阅", "续费", "com", "迷路", "官网", "6", "7", "8", "流量", "过期",
-      "落地", "回国", "本站", "用户", "若", "邮箱", "剩余", "顶级", "机场",
-      "到期", "猫", "赔钱", "夏日", "summer"
-    ];
+    let decodedText = "";
+    let filteredText = "";
+    let encodedText = "";
 
-    async function fetchAndProcess() {
+    async function step1_decode() {
       const url = document.getElementById('subUrl').value.trim();
-      const resultEl = document.getElementById('result');
-      resultEl.textContent = '正在获取并解析订阅内容...';
+      const decodedResult = document.getElementById('decodedResult');
+      const filteredResult = document.getElementById('filteredResult');
+      const encodedResult = document.getElementById('encodedResult');
+
+      filteredResult.textContent = "筛选结果会显示在这里...";
+      encodedResult.textContent = "加密结果会显示在这里...";
+      decodedResult.textContent = "解析中，请稍候...";
 
       if (!url.startsWith('http')) {
-        resultEl.textContent = '❌ 请输入合法的订阅链接';
+        decodedResult.textContent = "❌ 请输入合法的订阅链接";
         return;
       }
 
       try {
         const res = await fetch(url);
         const base64text = await res.text();
-        const decoded = atob(base64text);
-        const lines = decoded
-          .split('\n')
-          .map(line => line.trim())
-          .filter(line => {
-            if (!line || line.startsWith('hy2://')) return false;
-            return defaultKeywords.some(keyword => decodeURIComponent(line).includes(keyword));
-          });
-
-        resultEl.textContent = lines.length
-          ? lines.join('\n')
-          : '⚠️ 没有符合关键词的节点，或全部为 hy2 协议';
-      } catch (err) {
-        resultEl.textContent = '❌ 解析失败：' + err.message;
+        decodedText = atob(base64text);
+        decodedResult.textContent = decodedText;
+      } catch (e) {
+        decodedResult.textContent = "❌ 解析失败：" + e.message;
       }
     }
 
-    function exportBase64() {
-      const raw = document.getElementById('result').textContent.trim();
-      if (!raw) return alert("没有可导出的内容");
-      const encoded = btoa(raw);
-      navigator.clipboard.writeText(encoded).then(() => {
-        alert("✅ Base64 编码内容已复制");
-      });
-    }
+    function step2_filter() {
+      const keywordInput = document.getElementById('keywordInput').value.trim();
+      const filteredResult = document.getElementById('filteredResult');
 
-    async function uploadToGitHub() {
-      const token = document.getElementById('githubToken').value.trim();
-      const rawNodes = document.getElementById('result').textContent.trim();
-
-      if (!rawNodes || rawNodes === '等待中...' || rawNodes.includes('失败')) {
-        alert('❌ 没有可上传的内容，请先完成解析！');
+      if (!decodedText) {
+        filteredResult.textContent = "❌ 请先完成步骤 1 的解码";
+        return;
+      }
+      if (!keywordInput) {
+        filteredResult.textContent = "❌ 关键词不能为空";
         return;
       }
 
-      const content = btoa(rawNodes); // ✅ 重新加密
+      const keywords = keywordInput.split('|').map(k => k.trim()).filter(k => k);
+      const lines = decodedText.split('\n').map(l => l.trim());
+      filteredText = lines.filter(line => {
+        if (!line || line.startsWith('hy2://')) return false;
+        const decodedLine = decodeURIComponent(line);
+        return keywords.some(k => decodedLine.includes(k));
+      }).join('\n');
+
+      filteredResult.textContent = filteredText || "⚠️ 没有符合条件的节点";
+    }
+
+    function step3_encode() {
+      const encodedResult = document.getElementById('encodedResult');
+      if (!filteredText) {
+        encodedResult.textContent = "❌ 请先完成步骤 2 的筛选";
+        return;
+      }
+      encodedText = btoa(filteredText);
+      encodedResult.textContent = encodedText;
+    }
+
+    async function step4_upload() {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!encodedText) {
+        alert("❌ 请先完成步骤 3 的加密");
+        return;
+      }
+      if (!token) {
+        alert("❌ 请填写 GitHub Token");
+        return;
+      }
+
       const username = "kizoc";
       const repo = "sub";
       const path = "my-sub.txt";
@@ -155,18 +190,17 @@
           },
           body: JSON.stringify({
             message: "update my-sub.txt",
-            content: content,
+            content: encodedText,
             sha: sha
           })
         });
 
         if (res.ok) {
-          alert("✅ 上传成功！你现在可以用订阅链接更新节点啦！");
+          alert("✅ 上传成功！订阅内容已更新");
         } else {
           const err = await res.json();
           alert("❌ 上传失败：" + (err.message || "未知错误"));
         }
-
       } catch (e) {
         alert("❌ 网络请求失败：" + e.message);
       }
