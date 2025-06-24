@@ -127,11 +127,17 @@
 
     async function uploadToGitHub() {
       const token = document.getElementById('githubToken').value.trim();
-      const content = btoa(document.getElementById('result').textContent);
+      const rawNodes = document.getElementById('result').textContent.trim();
+
+      if (!rawNodes || rawNodes === '等待中...' || rawNodes.includes('失败')) {
+        alert('❌ 没有可上传的内容，请先完成解析！');
+        return;
+      }
+
+      const content = btoa(rawNodes); // ✅ 重新加密
       const username = "kizoc";
       const repo = "sub";
       const path = "my-sub.txt";
-
       const url = `https://api.github.com/repos/${username}/${repo}/contents/${path}`;
 
       try {
@@ -155,16 +161,16 @@
         });
 
         if (res.ok) {
-          alert("✅ 上传成功！");
+          alert("✅ 上传成功！你现在可以用订阅链接更新节点啦！");
         } else {
           const err = await res.json();
           alert("❌ 上传失败：" + (err.message || "未知错误"));
         }
+
       } catch (e) {
-        alert("❌ 请求失败：" + e.message);
+        alert("❌ 网络请求失败：" + e.message);
       }
     }
   </script>
 </body>
 </html>
-
