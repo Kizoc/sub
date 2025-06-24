@@ -80,7 +80,7 @@
     <button onclick="step1_decode()">解析并解码订阅</button>
     <pre id="decodedResult">解码结果会显示在这里...</pre>
 
-    <label for="keywordInput">步骤 2：输入关键词（用 | 分隔，自动排除 hy2 协议）</label>
+    <label for="keywordInput">步骤 2：输入关键词（用 | 分隔，自动排除 hy2 和 hysteria2 协议）</label>
     <input id="keywordInput" placeholder="例如：机场|美女|官网|订阅" value="认准|全网|客服|美女|mao|网址|网站|最新|订阅|续费|com|迷路|官网|6|7|8|流量|过期|落地|回国|本站|用户|若|邮箱|剩余|顶级|机场|到期|猫|赔钱|夏日|summer" />
     <button onclick="step2_filter()">筛选节点</button>
     <pre id="filteredResult">筛选结果会显示在这里...</pre>
@@ -141,9 +141,11 @@
       const keywords = keywordInput.split('|').map(k => k.trim()).filter(k => k);
       const lines = decodedText.split('\n').map(l => l.trim());
       filteredText = lines.filter(line => {
-        if (!line || line.startsWith('hy2://')) return false;
-        const decodedLine = decodeURIComponent(line);
-        return keywords.some(k => decodedLine.includes(k));
+        if (!line) return false;
+        const lowerLine = line.toLowerCase();
+        if (lowerLine.startsWith('hy2://') || lowerLine.startsWith('hysteria2://')) return false;
+        // 关键词匹配，忽略大小写
+        return keywords.some(k => line.includes(k));
       }).join('\n');
 
       filteredResult.textContent = filteredText || "⚠️ 没有符合条件的节点";
@@ -213,3 +215,4 @@
   </script>
 </body>
 </html>
+
